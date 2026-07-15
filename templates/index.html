@@ -90,6 +90,11 @@
         }
         .location-hint.accent { color: #4f8ef7; }
         .location-hint.warn { color: #f59e0b; }
+
+        .estimate-footnote {
+            font-size: 12px; color: #64748b; margin-top: 10px;
+            line-height: 1.5; padding: 0 4px;
+        }
     </style>
 </head>
 <body>
@@ -297,9 +302,15 @@
                 html += `<tr class="subtotal"><td>Land & Acquisition Subtotal</td><td></td><td class="mono right">${data.total_land}</td></tr>`;
             }
 
-            html += `<tr class="grand-total"><td>TOTAL ESTIMATED COST</td><td class="mono right">${data.total_psf} / SF</td><td class="mono right">${data.grand_total}</td></tr>`;
+            html += `<tr class="grand-total"><td>TOTAL ESTIMATED COST*</td><td class="mono right">${data.total_psf} / SF</td><td class="mono right">${data.grand_total}</td></tr>`;
 
             html += '</tbody></table>';
+            html += `<div class="estimate-footnote">
+                * This is a preliminary estimate based on published national cost data (RSMeans Building Construction Cost Data),
+                location factors (USACE Area Cost Factors), and standard industry percentage assumptions (AIA, NAHB, AACE 18R-97).
+                Actual costs will vary based on site conditions, local labor markets, material pricing, and project-specific requirements.
+                Verify all figures with local contractors and consultants before relying on them.
+            </div>`;
             document.getElementById('costResults').innerHTML = html;
         }
     </script>
