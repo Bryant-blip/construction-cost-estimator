@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Construction Cost Estimator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0d1117;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        .accent-line { height: 3px; background: #4f8ef7; }
+        .header { padding: 14px 28px; }
+        .header h1 { font-size: 22px; font-weight: 700; }
+        .header .sub { color: #64748b; font-size: 13px; }
+
+        .content { padding: 20px 28px; max-width: 1100px; padding-bottom: 60px; }
+
+        .card {
+            background: #161b27; border: 1px solid #21293a;
+            border-radius: 10px; padding: 22px 26px; margin-bottom: 16px;
+        }
+
+        .form-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label {
+            font-size: 12px; color: #64748b; margin-bottom: 6px; font-weight: 500;
+        }
+        input[type="text"], select {
+            padding: 11px 14px; background: #0d1117; border: 1px solid #21293a;
+            border-radius: 8px; color: #e2e8f0; font-size: 14px; outline: none;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus { border-color: #4f8ef7; }
+        select { cursor: pointer; }
+
+        .btn {
+            padding: 11px 22px; border: none; border-radius: 8px;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
+        }
+        .btn-orange { background: #f59e0b; color: #1a1000; }
+        .btn-orange:hover { background: #d97706; }
+        .btn-success { background: #34d399; color: #051a0e; }
+        .btn-success:hover { background: #28c789; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .results-table {
+            width: 100%; border-collapse: collapse; margin-top: 12px;
+            font-size: 14px;
+        }
+        .results-table th {
+            background: #1a2233; color: #4f8ef7; text-align: left;
+            padding: 10px 14px; font-weight: 600; font-size: 13px;
+        }
+        .results-table td {
+            padding: 8px 14px; border-bottom: 1px solid #161b27;
+        }
+        .results-table tr:nth-child(even) td { background: #0c1018; }
+        .results-table tr:nth-child(odd) td { background: #080c14; }
+        .results-table .subtotal td {
+            background: #132030 !important; font-weight: 600;
+        }
+        .results-table .soft-cost td {
+            color: #64748b; font-size: 13px;
+        }
+        .results-table .grand-total td {
+            background: #4f8ef7 !important; color: #fff;
+            font-weight: 700; font-size: 15px;
+        }
+        .right { text-align: right; }
+        .mono { font-family: 'Consolas', 'Courier New', monospace; }
+
+        .status-bar {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: #161b27; border-top: 1px solid #21293a;
+            padding: 10px 28px; display: flex; align-items: center;
+            justify-content: space-between; font-size: 13px; z-index: 100;
+        }
+        .status-text { color: #64748b; display: flex; align-items: center; gap: 8px; }
+        .status-dot { font-size: 10px; }
+
+        .location-hint {
+            font-size: 13px; margin-top: 8px; color: #64748b;
+        }
+        .location-hint.accent { color: #4f8ef7; }
+        .location-hint.warn { color: #f59e0b; }
+    </style>
+</head>
+<body>
+    <div class="accent-line"></div>
+
+    <div class="header">
+        <h1>Construction Cost Estimator</h1>
+        <span class="sub">Quick, formula-based construction cost estimates</span>
+    </div>
+
+    <div class="content">
+        <div class="card">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Property Type</label>
+                    <select id="costPropertyType" style="width:240px;" onchange="onPropertyTypeChange()">
+                        <optgroup label="Self-Storage">
+                            <option value="storage_driveup" selected>Drive-Up</option>
+                            <option value="storage_cc">Climate Controlled</option>
+                        </optgroup>
+                        <optgroup label="Commercial">
+                            <option value="retail_qsr">Retail / QSR (Shell)</option>
+                            <option value="warehouse">Warehouse / Distribution</option>
+                            <option value="medical_office">Medical Office</option>
+                        </optgroup>
+                        <optgroup label="Residential">
+                            <option value="multifamily">Multifamily — Garden Style</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Total Building SF</label>
+                    <input type="text" id="costSF" value="50,000" style="width:140px;">
+                </div>
+                <div class="form-group">
+                    <label>City / Metro</label>
+                    <input type="text" id="costCity" placeholder="e.g. Austin, Denver, Miami" style="width:220px;">
+                </div>
+                <div class="form-group">
+                    <label>Quality</label>
+                    <select id="costQuality" style="width:130px;">
+                        <option value="Economy">Economy</option>
+                        <option value="Average" selected>Average</option>
+                        <option value="Premium">Premium</option>
+                    </select>
+                </div>
+                <div class="form-group" id="storiesGroup" style="display:none;">
+                    <label>Stories</label>
+                    <select id="costStories" style="width:80px;">
+                        <option value="1" selected>1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Land Cost ($)</label>
+                    <input type="text" id="costLand" placeholder="Optional" style="width:130px;">
+                </div>
+                <div class="form-group">
+                    <label>Loan Rate %</label>
+                    <input type="text" id="costLoanRate" value="8.5" style="width:80px;">
+                </div>
+                <div class="form-group">
+                    <label>Const. Months</label>
+                    <input type="text" id="costConstMonths" value="12" style="width:80px;">
+                </div>
+            </div>
+            <div class="form-row" style="margin-top:12px;">
+                <div class="form-group">
+                    <button type="button" class="btn btn-orange" onclick="quickEstimate()">&#9654; Quick Estimate</button>
+                </div>
+            </div>
+            <div class="location-hint" id="locationHint"></div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-size:13px; font-weight:600; color:#64748b;">Cost Breakdown</span>
+        </div>
+
+        <div id="costResults">
+            <div class="card" style="text-align:center; color:#64748b; padding:40px;">
+                Enter building details above and click Estimate
+            </div>
+        </div>
+
+        <div style="margin-top:12px; text-align:right; display:none;" id="quickExportWrap">
+            <button type="button" class="btn btn-success" onclick="exportQuickEstimate()">Export to Excel &#9654;</button>
+        </div>
+    </div>
+
+    <div class="status-bar">
+        <div class="status-text">
+            <span class="status-dot" id="statusDot">&#9679;</span>
+            <span id="statusText">Ready</span>
+        </div>
+    </div>
+
+    <script>
+        const STORY_TYPES = ['storage_cc', 'medical_office', 'multifamily'];
+        function onPropertyTypeChange() {
+            const ptype = document.getElementById('costPropertyType').value;
+            const hasStories = STORY_TYPES.includes(ptype);
+            document.getElementById('storiesGroup').style.display = hasStories ? '' : 'none';
+            if (!hasStories) document.getElementById('costStories').value = '1';
+        }
+
+        function setStatus(text, color) {
+            document.getElementById('statusText').textContent = text;
+            document.getElementById('statusText').style.color = color || '#64748b';
+            document.getElementById('statusDot').style.color = color || '#64748b';
+        }
+
+        function readInputs() {
+            return {
+                building_type: document.getElementById('costPropertyType').value,
+                sf: parseFloat(document.getElementById('costSF').value.replace(/,/g, '')),
+                city: document.getElementById('costCity').value.trim(),
+                quality: document.getElementById('costQuality').value,
+                loan_rate: parseFloat(document.getElementById('costLoanRate').value) || 0,
+                const_months: parseInt(document.getElementById('costConstMonths').value) || 12,
+                land_cost: parseFloat(document.getElementById('costLand').value.replace(/,/g, '')) || 0,
+            };
+        }
+
+        async function quickEstimate() {
+            const body = readInputs();
+            if (!body.sf || body.sf <= 0) { alert('Please enter a valid SF'); return; }
+
+            try {
+                const res = await fetch('/api/quick-estimate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(body),
+                });
+
+                if (!res.ok) { const d = await res.json(); alert(d.detail); return; }
+
+                const data = await res.json();
+                renderCostResults(data);
+                document.getElementById('quickExportWrap').style.display = 'block';
+                setStatus(`Estimate: ${data.building_type} — ${body.sf.toLocaleString()} SF — ${data.grand_total} total (${data.total_psf}/SF)`, '#34d399');
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        async function exportQuickEstimate() {
+            const body = readInputs();
+            try {
+                const res = await fetch('/api/quick-estimate-export', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(body),
+                });
+                if (!res.ok) { alert('Export failed'); return; }
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `quick_estimate_${body.city.replace(/[, ]/g, '_') || 'national'}.xlsx`;
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (err) {
+                alert('Export error: ' + err.message);
+            }
+        }
+
+        function renderCostResults(data) {
+            const hint = document.getElementById('locationHint');
+            if (data.matched_city) {
+                hint.textContent = `Location factor: ${data.location_factor.toFixed(2)}x  (${data.matched_city})`;
+                hint.className = 'location-hint accent';
+            } else if (data.city && data.city !== 'National Avg') {
+                hint.textContent = 'City not found — using national average (1.00x)';
+                hint.className = 'location-hint warn';
+            } else {
+                hint.textContent = 'No city — using national average (1.00x)';
+                hint.className = 'location-hint';
+            }
+
+            let html = '<table class="results-table"><thead><tr>';
+            html += '<th>Component</th><th>$/SF or Note</th><th class="right">Total Cost</th>';
+            html += '</tr></thead><tbody>';
+
+            data.hard_cost_rows.forEach(row => {
+                html += `<tr><td>${row.name}</td><td class="mono right">${row.psf}</td><td class="mono right">${row.cost}</td></tr>`;
+            });
+
+            html += `<tr class="subtotal"><td>Hard Cost Subtotal</td><td></td><td class="mono right">${data.total_hard}</td></tr>`;
+
+            data.soft_cost_rows.forEach(row => {
+                html += `<tr class="soft-cost"><td>&nbsp;&nbsp;${row.name}</td><td class="mono right">${row.pct}</td><td class="mono right">${row.cost}</td></tr>`;
+            });
+
+            html += `<tr class="subtotal"><td>Soft Cost Subtotal</td><td></td><td class="mono right">${data.total_soft}</td></tr>`;
+
+            if (data.land_cost_rows && data.land_cost_rows.length > 0) {
+                html += `<tr class="subtotal"><td colspan="3" style="color:#f59e0b; padding-top:16px;">Land & Acquisition Costs</td></tr>`;
+                data.land_cost_rows.forEach(row => {
+                    html += `<tr><td>${row.name}</td><td class="mono right">${row.note}</td><td class="mono right">${row.cost}</td></tr>`;
+                });
+                html += `<tr class="subtotal"><td>Land & Acquisition Subtotal</td><td></td><td class="mono right">${data.total_land}</td></tr>`;
+            }
+
+            html += `<tr class="grand-total"><td>TOTAL ESTIMATED COST</td><td class="mono right">${data.total_psf} / SF</td><td class="mono right">${data.grand_total}</td></tr>`;
+
+            html += '</tbody></table>';
+            document.getElementById('costResults').innerHTML = html;
+        }
+    </script>
+</body>
+</html>
